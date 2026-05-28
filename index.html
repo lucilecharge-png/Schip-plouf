@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Schip'Plouf — Joy & l'eau</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #cdeef5; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+  @keyframes pop { from{transform:scale(.6);opacity:0} to{transform:scale(1);opacity:1} }
+  .float { animation: bob 4s ease-in-out infinite; }
+  .card { animation: pop .4s ease both; }
+  .baloo { font-family: 'Baloo 2', 'Nunito', sans-serif; }
+  input::placeholder { color:#8aa6b0; }
+  .sugg:hover { background:#1a5f7a !important; color:#fff !important; }
+  .stepRow:hover { background:#f4fbfd; }
+  .chat-scroll { scrollbar-width: thin; scrollbar-color: #cdeef5 transparent; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useEffect, useMemo } = React;
+
+const C = {
+  ocean:"#1a5f7a", oceanDark:"#0e3a4a", foam:"#cdeef5",
+  coral:"#e05c45", coralDark:"#c4452f", sand:"#f2d98b", sandDeep:"#e6c45f",
+};
+
+const TARGET = new Date("2026-07-18T08:00:00");
+
+const PHASES = [
+  { id:1, title:"La baignoire", duration:"2 à 3 semaines", icon:"🛁",
+    intro:"On apprivoise l'eau à la maison, en terrain connu et rassurant.",
+    steps:[
+      {id:"1a", label:"Baignoire sèche", hint:"Joy monte dans la baignoire vide pour une friandise."},
+      {id:"1b", label:"Quelques cm d'eau", hint:"Un fond d'eau tiède, sans jamais la forcer."},
+      {id:"1c", label:"Pattes dans l'eau", hint:"Elle pose et bouge les pattes spontanément."},
+      {id:"1d", label:"Corps habitué", hint:"Joy reste détendue, l'eau ne l'inquiète plus."},
+    ]},
+  { id:2, title:"Flaque & bassin extérieur", duration:"3 à 4 semaines", icon:"💧",
+    intro:"On passe dehors : eau plus grande, mais toujours peu profonde.",
+    steps:[
+      {id:"2a", label:"Exploration libre", hint:"Joy renifle et tourne autour du bassin à son rythme."},
+      {id:"2b", label:"Entrée spontanée", hint:"Elle entre seule, sans être portée ni tirée."},
+      {id:"2c", label:"Jeu dans l'eau", hint:"Jouet flottant, éclaboussures : l'eau devient fun."},
+      {id:"2d", label:"Confiance acquise", hint:"Joy choisit l'eau d'elle-même quand l'occasion se présente."},
+    ]},
+  { id:3, title:"Baignade contrôlée", duration:"Selon le rythme de Joy", icon:"🦺",
+    intro:"Première vraie nage en sécurité, en eau douce.",
+    steps:[
+      {id:"3a", label:"Rive en pente douce", hint:"Un plan d'eau où elle entre progressivement."},
+      {id:"3b", label:"Gilet de flottaison", hint:"Gilet rayé bien ajusté, testé au sol avant l'eau."},
+      {id:"3c", label:"Séances courtes", hint:"5 à 10 min max, on s'arrête sur une réussite."},
+      {id:"3d", label:"Associations positives", hint:"Friandises, voix douce, jeu : que du bon."},
+    ]},
+  { id:4, title:"Transition vers la mer", duration:"Dernières semaines avant Gigaro", icon:"⛵",
+    intro:"Cap sur Gigaro : on découvre le sel, les vagues douces et la plage.",
+    steps:[
+      {id:"4a", label:"Eau calme", hint:"Une crique sans vagues pour la première fois."},
+      {id:"4b", label:"Plage peu fréquentée", hint:"Tôt le matin, au calme, sans stress."},
+      {id:"4c", label:"Acclimatation au sel", hint:"Goût et odeur du sel, rinçage à l'eau douce après."},
+      {id:"4d", label:"Bain réussi à la mer", hint:"Joy entre dans la mer, détendue et joyeuse 🎉"},
+    ]},
+];
+
+const ALL_STEPS = PHASES.flatMap(p => p.steps.map(s => s.id));
+
+function JoyLogo({ size=160 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="badge"><rect x="4" y="4" width="192" height="192" rx="42" ry="42"/></clipPath>
+        <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#b8dff0"/><stop offset="60%" stopColor="#6bbdd6"/><stop offset="100%" stopColor="#3a9bbf"/>
+        </linearGradient>
+        <linearGradient id="waveG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#4ab0d4"/><stop offset="100%" stopColor="#1a5f7a"/>
+        </linearGradient>
+      </defs>
+      <rect x="4" y="4" width="192" height="192" rx="42" ry="42" fill="url(#skyG)"/>
+      <g clipPath="url(#badge)">
+        <ellipse cx="160" cy="115" rx="55" ry="18" fill="#e8c97a" opacity="0.7"/>
+        <rect x="0" y="118" width="200" height="90" fill="url(#waveG)"/>
+        <path d="M0 125 Q25 115 50 125 Q75 135 100 125 Q125 115 150 125 Q175 135 200 125 L200 145 L0 145Z" fill="#5ab8d5" opacity="0.6"/>
+        <path d="M0 138 Q30 128 60 138 Q90 148 120 138 Q150 128 180 138 Q192 142 200 138 L200 200 L0 200Z" fill="#2a7fa0"/>
+        <path d="M0 138 Q30 128 60 138 Q90 148 120 138 Q150 128 180 138 Q192 142 200 138" fill="none" stroke="white" strokeWidth="3" opacity="0.7" strokeLinecap="round"/>
+        <ellipse cx="100" cy="130" rx="38" ry="22" fill="#1c1c1e"/>
+        <ellipse cx="78" cy="115" rx="14" ry="12" fill="#1c1c1e"/>
+        <ellipse cx="68" cy="100" rx="22" ry="20" fill="#1c1c1e"/>
+        <polygon points="52,90 45,68 62,85" fill="#1c1c1e"/>
+        <polygon points="78,88 82,66 90,84" fill="#1c1c1e"/>
+        <ellipse cx="58" cy="106" rx="11" ry="8" fill="#2e2e30"/>
+        <ellipse cx="54" cy="102" rx="5.5" ry="4" fill="#111"/>
+        <ellipse cx="53" cy="100.5" rx="1.8" ry="1.2" fill="#555" opacity="0.7"/>
+        <circle cx="72" cy="97" r="5.5" fill="white"/>
+        <circle cx="73" cy="97" r="3.5" fill="#1c1c1e"/>
+        <circle cx="73.8" cy="95.8" r="1.3" fill="white"/>
+        <path d="M56 109 Q60 113 65 110" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
+        <ellipse cx="138" cy="112" rx="13" ry="9" fill="#1c1c1e" transform="rotate(-35 138 112)"/>
+        <ellipse cx="143" cy="104" rx="9" ry="6" fill="#2a2a2c" transform="rotate(-50 143 104)"/>
+        <ellipse cx="75" cy="143" rx="7" ry="5" fill="#1c1c1e" transform="rotate(-20 75 143)"/>
+        <ellipse cx="95" cy="147" rx="7" ry="5" fill="#1c1c1e" transform="rotate(10 95 147)"/>
+        <ellipse cx="108" cy="128" rx="30" ry="16" fill="#e05c45"/>
+        <ellipse cx="108" cy="128" rx="30" ry="16" fill="none" stroke="white" strokeWidth="5" strokeDasharray="14,10" opacity="0.9"/>
+        <ellipse cx="108" cy="128" rx="30" ry="16" fill="none" stroke="#c4452f" strokeWidth="1.5"/>
+        <rect x="104" y="112" width="10" height="5" rx="2.5" fill="#c4452f" stroke="#fff" strokeWidth="1"/>
+        <circle cx="40" cy="135" r="3" fill="white" opacity="0.8"/>
+        <circle cx="38" cy="128" r="2" fill="white" opacity="0.6"/>
+        <circle cx="162" cy="133" r="2.5" fill="white" opacity="0.8"/>
+        <ellipse cx="158" cy="30" rx="3" ry="5" fill="#4ab0d4" transform="rotate(20 158 30)"/>
+        <ellipse cx="168" cy="22" rx="2" ry="3.5" fill="#4ab0d4" opacity="0.7" transform="rotate(10 168 22)"/>
+      </g>
+      <rect x="4" y="4" width="192" height="192" rx="42" ry="42" fill="none" stroke="#2a7fa0" strokeWidth="5"/>
+      <text x="100" y="40" textAnchor="middle" fontFamily="'Baloo 2',sans-serif" fontWeight="800" fontSize="26" fill="#1a3a4a">Schip'Plouf</text>
+      <text x="100" y="60" textAnchor="middle" fontFamily="'Nunito',sans-serif" fontWeight="700" fontSize="14" fill="#1a5f7a">Joy &amp; L'eau</text>
+    </svg>
+  );
+}
+
+function buildCoachReply(raw, ctx) {
+  const m = raw.toLowerCase();
+  const { phaseIdx, done, total, daysLeft } = ctx;
+  const current = PHASES[Math.min(phaseIdx, 3)];
+  const finished = done === total;
+  const has = (...w) => w.some(x => m.includes(x));
+  const advice = {
+    1:"On est sur la phase Baignoire 🛁 Zéro pression : commence baignoire vide, Joy y monte juste pour une friandise. Ensuite tu ajoutes l'eau quelques millimètres par jour, jamais plus.",
+    2:"Direction le bassin extérieur 💧 La règle d'or : ne JAMAIS la porter dans l'eau. Tu poses un jouet flottant au bord et tu la laisses venir. Si elle entre une seule patte, c'est gagné — on célèbre et on s'arrête.",
+    3:"Place à la baignade contrôlée 🦺 Cherche une rive en pente très douce. Fais-lui porter le gilet d'abord au sec à la maison. Séances de 5-10 min max, on termine TOUJOURS sur une réussite.",
+    4:"Dernière ligne droite vers Gigaro 🌊 Vise une crique calme tôt le matin. Laisse-la marcher dans 10 cm d'eau salée, puis nager. Rinçage à l'eau douce après chaque bain.",
+  };
+  if (has("bonjour","salut","coucou","hello","hey","bonsoir")) return `Coucou ! 🐾 Joy a validé ${done}/${total} étapes et il reste ${daysLeft} jours avant Gigaro. ${advice[current.id]}`;
+  if (has("merci","super","génial","parfait") && m.length < 40) return "Avec plaisir 💙 Étape par étape, Joy sent ta patience — c'est ça qui fait la différence !";
+  if (has("peur","stress","réticen","hésit","recule","refuse","anxieu","panique","n'aime pas")) return "Si Joy montre de la réticence, c'est un signal précieux — on ralentit. Reviens à l'étape précédente et reste-y plusieurs séances. Ne la force jamais : une mauvaise expérience peut coûter des semaines. Friandises haute valeur (poulet, fromage), séances très courtes et joyeuses.";
+  if (has("gilet","flott","brassière","bouée")) return "Le gilet rayé, c'est sa sécurité. Avant l'eau : fais-le-lui porter à la maison 2-3 fois avec friandises. Deux doigts sous les sangles = bon réglage. La poignée dorsale permet de la guider en douceur.";
+  if (has("sel","salée","océan","mer","vague","gigaro","plage")) return "La mer, c'est nouveau sur trois points : sel, vagues, immensité. Crique très calme tôt le matin pour débuter. Rinçage à l'eau douce du poil et des coussinets après chaque bain.";
+  if (has("baignoire","salle de bain")) return "La baignoire est l'étape fondatrice 🛁 Tapis antidérapant au fond. Eau tiède. Jour 1 : baignoire vide + friandise. Jours suivants : +1-2 cm d'eau. Quand Joy y entre seule, l'étape est gagnée.";
+  if (has("friandise","récompense","motiv","jouet","féliciter")) return "Le renforcement positif est ton meilleur outil. Friandises exceptionnelles réservées à l'eau uniquement. Récompense dans la seconde, voix enjouée. Termine chaque séance pendant qu'elle s'amuse encore.";
+  if (has("froid","températ","frais","frisson")) return "La température compte à 8 ans. Eau tiède en baignoire, pas froide en extérieur. Si elle frissonne ou cherche à sortir, on arrête et on sèche bien avec une serviette.";
+  if (has("8 ans","âge","vieil","senior","fatigue","articulation")) return "8 ans pour une Schipperke, c'est mature mais encore tonique. Séances courtes, on surveille la fatigue. La nage est excellente pour ses articulations, sans impact. Feu vert du véto avant la phase 3 = bonne idée.";
+  if (has("danger","noya","sécurité","courant","profond")) return "Sécurité d'abord 🦺 Surveillance directe à portée de bras dès qu'il y a de la profondeur. Gilet obligatoire en phase 3 et en mer. Évite les courants. Apprends-lui à repérer la sortie.";
+  if (has("nage","nager","patte")) return "Soutiens Joy sous le ventre les premières fois pour que son arrière-train remonte. Avec le gilet son équilibre est naturellement meilleur. Quelques secondes de nage au début, tu allonges progressivement.";
+  if (has("retard","temps","juillet","vite","trop tard","rythme")) {
+    if (daysLeft < 0) return "La date de Gigaro est passée, mais l'apprentissage de Joy n'a pas de date limite. Continue à son rythme !";
+    return `Il reste ${daysLeft} jours et ${done}/${total} étapes validées. Régularité plutôt qu'intensité — Joy a tout le temps d'arriver sereine à Gigaro.`;
+  }
+  if (has("prochain","étape","suivant","faire","conseil","commenc","aide","comment")) {
+    if (finished) return "Toutes les étapes sont validées — Joy est prête pour la mer ! 🎉 Entretiens ses acquis avec des baignades plaisir jusqu'au 18 juillet.";
+    return `${advice[current.id]} Coche les étapes au fur et à mesure.`;
+  }
+  if (finished) return "Joy a tout validé ! 🏆 Précise-moi ta situation (peur, gilet, sel, fatigue...) et je t'aide.";
+  return `Bonne question 💙 On en est à la phase « ${current.title} » (${done}/${total} étapes). ${advice[current.id]}`;
+}
+
+function App() {
+  const [checked, setChecked] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("schip_checked") || "{}"); } catch { return {}; }
+  });
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("schip_messages") || "null");
+      return saved || [{role:"coach", text:"Salut ! Je suis le coach de Joy 🐾 Une Schipperke de 8 ans pleine de caractère, et notre mission c'est qu'elle entre dans la mer à Gigaro le 18 juillet. Coche ses étapes à mesure qu'elle progresse, et pose-moi toutes tes questions !"}];
+    } catch { return [{role:"coach", text:"Salut ! Je suis le coach de Joy 🐾"}]; }
+  });
+  const [input, setInput] = useState("");
+  const [now, setNow] = useState(new Date());
+  const chatRef = useRef(null);
+
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
+  useEffect(() => { localStorage.setItem("schip_checked", JSON.stringify(checked)); }, [checked]);
+  useEffect(() => { localStorage.setItem("schip_messages", JSON.stringify(messages)); }, [messages]);
+  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [messages]);
+
+  const doneCount = ALL_STEPS.filter(id => checked[id]).length;
+  const totalCount = ALL_STEPS.length;
+  const globalPct = Math.round(doneCount / totalCount * 100);
+
+  const phaseIdx = useMemo(() => {
+    const idx = PHASES.findIndex(p => p.steps.some(s => !checked[s.id]));
+    return idx === -1 ? PHASES.length : idx;
+  }, [checked]);
+
+  const daysLeft = Math.ceil((TARGET - now) / 86400000);
+
+  const urgency = useMemo(() => {
+    if (daysLeft < 0) return { label:"Date passée", color:C.ocean, bg:C.foam, msg:"L'aventure continue !" };
+    if (daysLeft <= 7) return { label:"Dernière ligne droite", color:C.coral, bg:"#fde3de", msg:"On entretient, on ne force rien." };
+    if (daysLeft <= 21) return { label:"Ça approche", color:C.coralDark, bg:"#fdeae0", msg:"Régularité douce." };
+    if (daysLeft <= 45) return { label:"On avance bien", color:C.sandDeep, bg:"#fbf2d2", msg:"Le tempo est idéal." };
+    return { label:"Tout tranquille", color:C.ocean, bg:C.foam, msg:"Pas de pression." };
+  }, [daysLeft]);
+
+  const toggle = id => setChecked(c => { const n = {...c, [id]: !c[id]}; return n; });
+
+  const resetAll = () => {
+    if (window.confirm("Réinitialiser toute la progression de Joy ?")) {
+      setChecked({});
+      localStorage.removeItem("schip_checked");
+    }
+  };
+
+  const resetChat = () => {
+    const init = [{role:"coach", text:"Salut ! Je suis le coach de Joy 🐾 Pose-moi tes questions, je m'adapte à sa progression."}];
+    setMessages(init);
+    localStorage.setItem("schip_messages", JSON.stringify(init));
+  };
+
+  const send = preset => {
+    const text = (preset ?? input).trim();
+    if (!text) return;
+    const reply = buildCoachReply(text, { phaseIdx, done: doneCount, total: totalCount, daysLeft });
+    setMessages(m => [...m, {role:"user", text}, {role:"coach", text: reply}]);
+    setInput("");
+  };
+
+  const suggestions = phaseIdx >= PHASES.length
+    ? ["Comment entretenir les acquis ?", "Joy a peur des vagues, je fais quoi ?"]
+    : ["Quelle est la prochaine étape ?",
+       ["Comment l'habituer à la baignoire ?","Comment gérer le bassin ?","Comment régler le gilet ?","Comment l'acclimater au sel ?"][Math.min(phaseIdx,3)],
+       "Joy hésite à entrer dans l'eau"];
+
+  return (
+    <div style={{fontFamily:"'Nunito',system-ui,sans-serif", background:`linear-gradient(180deg,${C.foam} 0%,#eef9fc 38%,#fff 100%)`, minHeight:"100vh", color:C.oceanDark, paddingBottom:48}}>
+      <div style={{maxWidth:760, margin:"0 auto", padding:"0 16px"}}>
+
+        {/* Header */}
+        <header style={{textAlign:"center", padding:"28px 0 12px"}}>
+          <div className="float" style={{display:"inline-block"}}><JoyLogo size={160}/></div>
+          <p className="baloo" style={{margin:"4px 0 0", fontWeight:700, color:C.coral, fontSize:15}}>
+            Cap sur la mer à Gigaro · 18 juillet 2026 🌊
+          </p>
+        </header>
+
+        {/* Compte à rebours */}
+        <section className="card" style={{background:`linear-gradient(135deg,${C.ocean},${C.oceanDark})`, borderRadius:22, padding:"20px 22px", color:"#fff", boxShadow:"0 14px 30px -12px rgba(14,58,74,.5)", marginBottom:16}}>
+          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12}}>
+            <div>
+              <div style={{opacity:.85, fontWeight:700, fontSize:13, marginBottom:4}}>⏱ Objectif : la mer le 18 juillet 2026</div>
+              <div className="baloo" style={{fontSize:44, fontWeight:800, lineHeight:1}}>
+                {Math.max(daysLeft,0)}
+                <span style={{fontSize:17, fontWeight:700, marginLeft:8, opacity:.9}}>
+                  {daysLeft >= 0 ? "jours restants" : "jour J passé"}
+                </span>
+              </div>
+            </div>
+            <div style={{background:urgency.bg, color:urgency.color, borderRadius:14, padding:"10px 14px", textAlign:"center", minWidth:130}}>
+              <div style={{fontWeight:800, fontSize:14}}>{urgency.label}</div>
+              <div style={{fontSize:12, fontWeight:600, marginTop:2}}>{urgency.msg}</div>
+            </div>
+          </div>
+          <div style={{marginTop:16}}>
+            <div style={{display:"flex", justifyContent:"space-between", fontSize:13, fontWeight:700, marginBottom:6}}>
+              <span>🐾 Progression de Joy</span>
+              <span>{doneCount}/{totalCount} étapes · {globalPct}%</span>
+            </div>
+            <div style={{background:"rgba(255,255,255,.22)", borderRadius:999, height:12, overflow:"hidden"}}>
+              <div style={{width:`${globalPct}%`, height:"100%", borderRadius:999, background:`linear-gradient(90deg,${C.sand},${C.coral})`, transition:"width .6s ease"}}/>
+            </div>
+          </div>
+        </section>
+
+        {/* Phases header */}
+        <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", margin:"8px 4px 12px"}}>
+          <h2 className="baloo" style={{margin:0, fontSize:20, color:C.ocean}}>🌊 Les 4 phases</h2>
+          <button onClick={resetAll} style={{display:"flex", alignItems:"center", gap:5, background:"none", border:"1.5px solid #cdd9de", color:"#5b7884", borderRadius:999, padding:"5px 12px", fontWeight:700, fontSize:12.5, cursor:"pointer", fontFamily:"inherit"}}>
+            ↺ Réinitialiser
+          </button>
+        </div>
+
+        {/* Phases */}
+        {PHASES.map((phase, i) => {
+          const total = phase.steps.length;
+          const done = phase.steps.filter(s => checked[s.id]).length;
+          const pct = Math.round(done / total * 100);
+          const status = done === 0 ? "todo" : done === total ? "done" : "doing";
+          const active = i === phaseIdx;
+          const statusMap = {todo:{label:"À faire",bg:"#e3edf1",fg:"#5b7884"}, doing:{label:"En cours",bg:C.sand,fg:"#7a5e12"}, done:{label:"Terminé",bg:C.ocean,fg:"#fff"}};
+          const st = statusMap[status];
+          return (
+            <section key={phase.id} className="card" style={{background:"#fff", borderRadius:20, marginBottom:14, padding:"18px 18px 8px", border:active?`2px solid ${C.coral}`:"2px solid #e7eef1", boxShadow:active?"0 12px 26px -14px rgba(224,92,69,.45)":"0 8px 20px -16px rgba(14,58,74,.4)"}}>
+              <div style={{display:"flex", gap:13, alignItems:"flex-start"}}>
+                <div style={{flexShrink:0, width:46, height:46, borderRadius:14, background:status==="done"?C.ocean:C.foam, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22}}>
+                  {status==="done" ? "✓" : phase.icon}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3}}>
+                    <h3 className="baloo" style={{margin:0, fontSize:17, color:C.oceanDark}}>Phase {phase.id} — {phase.title}</h3>
+                    <span style={{background:st.bg, color:st.fg, fontSize:12, fontWeight:800, padding:"3px 10px", borderRadius:999}}>{st.label}</span>
+                    {active && <span style={{fontSize:11.5, fontWeight:800, color:C.coral}}>◀ on en est là</span>}
+                  </div>
+                  <p style={{margin:"2px 0", fontSize:13, color:"#5b7884", fontWeight:600}}>{phase.intro}</p>
+                  <p style={{margin:0, fontSize:12, color:"#8aa6b0", fontWeight:700}}>⏱ {phase.duration}</p>
+                </div>
+              </div>
+              <div style={{margin:"12px 0 4px", display:"flex", alignItems:"center", gap:10}}>
+                <div style={{flex:1, background:"#e3edf1", borderRadius:999, height:10, overflow:"hidden"}}>
+                  <div style={{width:`${pct}%`, height:"100%", background:status==="done"?C.ocean:C.coral, borderRadius:999, transition:"width .5s ease"}}/>
+                </div>
+                <span style={{fontSize:12.5, fontWeight:800, color:"#5b7884", minWidth:36}}>{done}/{total}</span>
+              </div>
+              <div style={{marginTop:6}}>
+                {phase.steps.map(s => {
+                  const on = !!checked[s.id];
+                  return (
+                    <div key={s.id} className="stepRow" onClick={() => toggle(s.id)} style={{display:"flex", alignItems:"flex-start", gap:11, padding:"9px 8px", borderRadius:12, cursor:"pointer", transition:"background .15s"}}>
+                      <div style={{flexShrink:0, width:24, height:24, borderRadius:8, marginTop:1, border:on?"none":"2px solid #c5d4da", background:on?C.coral:"#fff", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", color:"#fff", fontWeight:800, fontSize:15}}>
+                        {on && "✓"}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:800, fontSize:14.5, color:on?"#9bb2bb":C.oceanDark, textDecoration:on?"line-through":"none"}}>{s.label}</div>
+                        <div style={{fontSize:12.5, color:"#8aa6b0", fontWeight:600}}>{s.hint}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+
+        {/* Bandeau victoire */}
+        {doneCount === totalCount && (
+          <section className="card" style={{background:`linear-gradient(135deg,${C.coral},${C.sandDeep})`, borderRadius:20, padding:"18px 20px", color:"#fff", display:"flex", alignItems:"center", gap:13, marginBottom:14}}>
+            <span style={{fontSize:36}}>🏆</span>
+            <div>
+              <div className="baloo" style={{fontSize:18, fontWeight:800}}>Joy est prête pour la mer ! 🎉</div>
+              <div style={{fontSize:13, fontWeight:600, opacity:.95}}>Toutes les phases sont validées. Rendez-vous à Gigaro le 18 juillet.</div>
+            </div>
+          </section>
+        )}
+
+        {/* Coach */}
+        <section className="card" style={{background:"#fff", borderRadius:20, marginTop:8, border:"2px solid #e7eef1", overflow:"hidden", boxShadow:"0 12px 26px -16px rgba(14,58,74,.5)"}}>
+          <div style={{background:`linear-gradient(135deg,${C.ocean},${C.oceanDark})`, padding:"14px 18px", color:"#fff", display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+            <div style={{display:"flex", alignItems:"center", gap:10}}>
+              <div style={{width:38, height:38, borderRadius:11, background:"rgba(255,255,255,.18)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20}}>❤️</div>
+              <div>
+                <div className="baloo" style={{fontWeight:800, fontSize:16}}>Coach aquatique</div>
+                <div style={{fontSize:12, opacity:.85, fontWeight:600}}>Suit la progression de Joy en direct</div>
+              </div>
+            </div>
+            <button onClick={resetChat} style={{background:"rgba(255,255,255,.15)", border:"none", color:"#fff", borderRadius:8, padding:"5px 10px", fontSize:11.5, fontWeight:700, cursor:"pointer", fontFamily:"inherit"}}>
+              Effacer
+            </button>
+          </div>
+
+          <div ref={chatRef} className="chat-scroll" style={{padding:14, maxHeight:340, overflowY:"auto", display:"flex", flexDirection:"column", gap:10, background:"#f6fbfc"}}>
+            {messages.map((msg, i) => {
+              const mine = msg.role === "user";
+              return (
+                <div key={i} style={{alignSelf:mine?"flex-end":"flex-start", maxWidth:"86%", display:"flex", gap:8, flexDirection:mine?"row-reverse":"row"}}>
+                  {!mine && <div style={{flexShrink:0, width:30, height:30, borderRadius:9, background:C.foam, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15}}>✨</div>}
+                  <div style={{background:mine?C.coral:"#fff", color:mine?"#fff":C.oceanDark, border:mine?"none":"1.5px solid #e2ecef", padding:"10px 13px", borderRadius:14, borderBottomRightRadius:mine?4:14, borderBottomLeftRadius:mine?14:4, fontSize:14, fontWeight:600, lineHeight:1.55}}>
+                    {msg.text}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{display:"flex", gap:7, flexWrap:"wrap", padding:"10px 12px 0"}}>
+            {suggestions.map((s,i) => (
+              <button key={i} className="sugg" onClick={() => send(s)} style={{background:C.foam, color:C.ocean, border:"none", borderRadius:999, padding:"6px 12px", fontSize:12.5, fontWeight:700, cursor:"pointer", transition:"all .15s", fontFamily:"inherit"}}>{s}</button>
+            ))}
+          </div>
+
+          <div style={{display:"flex", gap:8, padding:12}}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if(e.key==="Enter") send(); }} placeholder="Pose ta question au coach…" style={{flex:1, border:"2px solid #e2ecef", borderRadius:12, padding:"11px 14px", fontSize:14, fontWeight:600, outline:"none", color:C.oceanDark, fontFamily:"inherit"}}/>
+            <button onClick={() => send()} style={{background:C.coral, border:"none", borderRadius:12, width:48, color:"#fff", cursor:"pointer", fontSize:20}}>➤</button>
+          </div>
+        </section>
+
+        <p style={{textAlign:"center", fontSize:12, color:"#8aa6b0", fontWeight:700, marginTop:20}}>
+          ☀️ Patience, douceur et friandises — Joy y arrivera 💙
+        </p>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
